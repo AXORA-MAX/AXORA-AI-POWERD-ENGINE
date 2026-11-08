@@ -1,0 +1,21 @@
+[package]
+name = "axora-core"
+version = "0.1.0"
+edition = "2021"
+description = "AXORA Core — orchestration, policy/permission boundary, agent runtime foundation. NOT COMPILED in the sandbox that produced this file: no rustc/cargo toolchain was available. Zero external crates on purpose so `cargo build` has the best chance of working unmodified the first time you run it."
+
+[dependencies]
+# serde + serde_json: needed for rpc.rs's stdio JSON protocol (see
+# docs/CORE_PROTOCOL.md). This is a deliberate, ordinary dependency, not
+# a departure from the "zero external crates" note above — that note was
+# about not needing anything speculative before there was a concrete use
+# for it; rpc.rs is that use. Unlike services/gateway's from-scratch ZIP
+# reader, there's no verification benefit to hand-rolling JSON parsing
+# here: this Rust code can't be compiled in this sandbox either way, so
+# using the standard, correct crate is the honest choice, not a shortcut.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "axora-core"
+path = "src/main.rs"

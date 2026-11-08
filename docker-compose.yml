@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: axora
+      POSTGRES_PASSWORD: axora_dev_password
+      POSTGRES_DB: axora
+    ports:
+      - "5432:5432"
+    volumes:
+      - axora_pg_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U axora"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build:
+      context: ./services/gateway
+    restart: unless-stopped
+    environment:
+      PORT: 8787
+      DATABASE_URL: postgres://axora:axora_dev_password@postgres:5432/axora
+    ports:
+      - "8787:8787"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  axora_pg_data:

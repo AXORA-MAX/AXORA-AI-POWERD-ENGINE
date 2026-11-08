@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AXORA</title>
+<style>
+  :root {
+    --bg: #0b0f17; --panel: #121826; --panel2: #0e1420; --border: #232c3d;
+    --text: #e6ebf5; --muted: #8a95ab; --accent: #22d3ee; --accent2: #3b82f6;
+    --danger: #f87171; --warn: #fbbf24; --ok: #34d399;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:#f5f7fb; --panel:#ffffff; --panel2:#f0f3f9; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#f5f7fb; --panel:#ffffff; --panel2:#f0f3f9; --border:#e2e8f0;
+    --text:#0f172a; --muted:#64748b;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  .sidebar {
+    width: 260px; flex-shrink: 0; background: var(--panel2);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 16px; }
+  .brand .logo {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    flex-shrink: 0;
+  }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: 0.3px; }
+  .brand .tag { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  .new-chat-btn {
+    margin: 0 12px 12px; padding: 10px 12px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    cursor: pointer; font-size: 13px; font-weight: 600; text-align: left;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .new-chat-btn:hover { border-color: var(--accent2); }
+
+  .conv-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+  .conv-item {
+    padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--muted);
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .conv-item:hover { background: var(--panel); color: var(--text); }
+  .conv-item.active { background: var(--panel); color: var(--text); border: 1px solid var(--border); }
+
+  .nav { border-top: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+    cursor: pointer; color: var(--muted); font-size: 13px; background: transparent; border: none;
+    text-align: left; width: 100%; font-family: inherit;
+  }
+  .nav-btn:hover { background: var(--panel); color: var(--text); }
+  .nav-btn.active { background: var(--panel); color: var(--accent); font-weight: 600; }
+  .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .conn-status { padding: 10px 16px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .conn-dot.ok { background: var(--ok); }
+  .conn-dot.bad { background: var(--danger); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    height: 52px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+  }
+  .topbar h2 { font-size: 14px; margin: 0; font-weight: 600; }
+  .topbar .controls { display: flex; align-items: center; gap: 8px; }
+  select, input[type=text], input[type=number], textarea {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; font-size: 12.5px; font-family: inherit;
+  }
+  button.icon-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); cursor: pointer; padding: 6px 9px; font-size: 12px;
+  }
+  button.icon-btn:hover { color: var(--text); border-color: var(--accent2); }
+
+  .view { flex: 1; overflow-y: auto; display: none; }
+  .view.active { display: flex; flex-direction: column; }
+
+  #view-chat { padding: 0; }
+  .chat-log { flex: 1; overflow-y: auto; padding: 20px 0; display: flex; flex-direction: column; gap: 16px; }
+  .msg-row { display: flex; padding: 0 20px; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg {
+    max-width: 70%; padding: 11px 15px; border-radius: 14px; white-space: pre-wrap;
+    word-wrap: break-word; font-size: 13.5px;
+  }
+  .msg.user { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #04121a; border-bottom-right-radius: 4px; }
+  .msg.assistant { background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.system-note { background: transparent; border: 1px dashed var(--border); color: var(--muted); font-size: 12px; }
+  .msg code { background: rgba(127,127,127,0.18); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .msg pre { background: rgba(127,127,127,0.12); padding: 10px; border-radius: 8px; overflow-x: auto; }
+  .msg pre code { background: none; padding: 0; }
+
+  .empty-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 10px; }
+  .empty-chat .logo-big { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+
+  .composer { border-top: 1px solid var(--border); padding: 14px 20px; display: flex; gap: 10px; align-items: flex-end; }
+  .composer textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 160px; border-radius: 12px; padding: 11px 14px;
+  }
+  .send-btn {
+    background: var(--accent2); color: white; border: none; border-radius: 10px;
+    padding: 0 18px; height: 44px; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+  .send-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .panel { padding: 20px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; flex: 1; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 13px; }
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .form-row > * { flex: 1; min-width: 120px; }
+  .form-row textarea { min-height: 60px; resize: vertical; width: 100%; }
+  .btn-primary {
+    background: var(--accent2); color: white; border: none; border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; font-weight: 600; font-size: 12.5px; flex: 0 0 auto;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .btn-secondary {
+    background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; font-size: 12px;
+  }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-ok { color: var(--ok); border-color: var(--ok); }
+
+  .list-item {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 12.5px;
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-item .meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+  .list-item .content { flex: 1; min-width: 0; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .badge.ready, .badge.success, .badge.completed, .badge.allow { background: rgba(52,211,153,0.15); color: var(--ok); }
+  .badge.pending, .badge.chunking, .badge.running, .badge.awaiting_approval { background: rgba(251,191,36,0.15); color: var(--warn); }
+  .badge.failed, .badge.denied { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+  .empty-note { color: var(--muted); font-size: 12.5px; text-align: center; padding: 24px 0; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>AXORA</h1>
+        <div class="tag">Your Mind, Amplified</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" id="newChatBtn">+ New chat</button>
+
+    <div class="conv-list" id="convList"></div>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-view="chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Chat
+      </button>
+      <button class="nav-btn" data-view="memory">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-7 7c0 3 2 4 2 7h10c0-3 2-4 2-7a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>
+        Memory
+      </button>
+      <button class="nav-btn" data-view="knowledge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Knowledge Vault
+      </button>
+      <button class="nav-btn" data-view="tools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 1 1 5.4-5.4z"/></svg>
+        Tools &amp; Actions
+      </button>
+    </nav>
+
+    <div class="conn-status">
+      <span class="conn-dot" id="connDot"></span>
+      <span id="connText">connecting…</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h2 id="viewTitle">Chat</h2>
+      <div class="controls" id="topControls">
+        <select id="modeSelect" title="Routing mode">
+          <option value="auto">Auto</option>
+          <option value="fast" selected>Fast</option>
+          <option value="deep">Deep</option>
+          <option value="research">Research</option>
+          <option value="creative">Creative</option>
+          <option value="coding">Coding</option>
+          <option value="study">Study</option>
+        </select>
+        <button class="icon-btn" id="themeBtn" title="Toggle theme">◐</button>
+      </div>
+    </div>
+
+    <section class="view active" id="view-chat">
+      <div class="chat-log" id="chatLog">
+        <div class="empty-chat" id="emptyChat">
+          <div class="logo-big"></div>
+          <div>Ask AXORA anything to get started.</div>
+        </div>
+      </div>
+      <div class="composer">
+        <textarea id="composerInput" placeholder="Message AXORA…" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">Send</button>
+      </div>
+    </section>
+
+    <section class="view" id="view-memory">
+      <div class="panel">
+        <div class="card">
+          <h3>Add a memory</h3>
+          <div class="form-row">
+            <select id="memCategory">
+              <option value="fact">fact</option>
+              <option value="preference">preference</option>
+              <option value="goal">goal</option>
+              <option value="instruction">instruction</option>
+              <option value="relationship">relationship</option>
+            </select>
+            <select id="memScope">
+              <option value="">Global (all chats)</option>
+              <option value="current">This conversation only</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <textarea id="memContent" placeholder="What should AXORA remember?"></textarea>
+          </div>
+          <button class="btn-primary" id="memAddBtn">Save memory</button>
+        </div>
+        <div class="card">
+          <h3>Stored memories</h3>
+          <div id="memList"><div class="empty-note">Loading…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-knowledge">
+      <div class="panel">
+        <div class="card">
+          <h3>Upload a document</h3>
+          <div class="form-row">
+            <input type="text" id="kvTitle" placeholder="Title" />
+            <input type="file" id="kvFile" accept=".pdf,.docx,.pptx,.xlsx,.html,.htm,.csv,.json,.txt,.md,.png,.jpg,.jpeg" />
+          </div>
+          <div class="form-row">
+            <select id="kvScope">
+              <option value="">Global (all chats)</option>
+              <option value="current">This conversation only</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="kvUploadBtn">Upload &amp; ingest</button>
+          <div class="empty-note" style="text-align:left;padding:8px 0 0" id="kvUploadStatus"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">Documents</h3>
+            <button class="btn-secondary" id="kvRefreshBtn">Refresh</button>
+          </div>
+          <div id="kvList"><div class="empty-note">Loading…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-tools">
+      <div class="panel">
+        <div class="card">
+          <h3>Registered tools</h3>
+          <div id="toolsList"><div class="empty-note">Loading…</div></div>
+        </div>
+        <div class="card">
+          <h3>Run a tool</h3>
+          <div class="form-row">
+            <select id="toolSelect"></select>
+            <input type="text" id="toolInput" placeholder="Input (optional)" />
+          </div>
+          <button class="btn-primary" id="toolRunBtn">Execute</button>
+          <div class="empty-note" style="text-align:left;padding:8px 0 0" id="toolRunStatus"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h3 style="margin:0">Action log</h3>
+            <button class="btn-secondary" id="actionsRefreshBtn">Refresh</button>
+          </div>
+          <div id="actionsList"><div class="empty-note">Loading…</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const GATEWAY = window.AXORA_GATEWAY_URL || localStorage.getItem('axora_gateway_url') || 'http://localhost:8787';
+const state = {
+  conversationId: null,
+  conversations: [],
+  currentView: 'chat',
+};
+
+function uid(prefix) { return prefix + '-' + Math.random().toString(36).slice(2, 10); }
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderMarkdownLite(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/```([\s\S]*?)```/g, (_, code) => '<pre><code>' + code.trim() + '</code></pre>');
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return html;
+}
+async function api(path, options = {}) {
+  const res = await fetch(GATEWAY + path, {
+    headers: { 'content-type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  return res;
+}
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+}
+
+async function checkHealth() {
+  const dot = document.getElementById('connDot');
+  const txt = document.getElementById('connText');
+  try {
+    const res = await api('/v1/health');
+    const data = await res.json();
+    dot.className = 'conn-dot ok';
+    const provider = data.providers?.[0]?.id ?? 'unknown';
+    txt.textContent = 'connected · ' + provider;
+  } catch {
+    dot.className = 'conn-dot bad';
+    txt.textContent = 'gateway unreachable';
+  }
+}
+
+const viewTitles = { chat: 'Chat', memory: 'Memory', knowledge: 'Knowledge Vault', tools: 'Tools & Actions' };
+function switchView(view) {
+  state.currentView = view;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.getElementById('viewTitle').textContent = viewTitles[view];
+  document.getElementById('topControls').style.display = view === 'chat' ? 'flex' : 'none';
+  if (view === 'memory') loadMemories();
+  if (view === 'knowledge') loadDocuments();
+  if (view === 'tools') { loadTools(); loadActions(); }
+}
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+function applyTheme(t) {
+  if (t) document.documentElement.setAttribute('data-theme', t);
+  else document.documentElement.removeAttribute('data-theme');
+}
+applyTheme(localStorage.getItem('axora_theme'));
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const current = localStorage.getItem('axora_theme');
+  const next = current === 'light' ? 'dark' : (current === 'dark' ? '' : 'light');
+  if (next) localStorage.setItem('axora_theme', next); else localStorage.removeItem('axora_theme');
+  applyTheme(next);
+});
+
+async function loadConversations() {
+  try {
+    const res = await api('/v1/conversations');
+    const data = await res.json();
+    state.conversations = data.conversations || [];
+    renderConvList();
+  } catch { /* gateway may be offline; sidebar just stays empty */ }
+}
+function renderConvList() {
+  const list = document.getElementById('convList');
+  list.innerHTML = '';
+  for (const c of state.conversations) {
+    const el = document.createElement('div');
+    el.className = 'conv-item' + (c.id === state.conversationId ? ' active' : '');
+    el.textContent = c.title || c.id;
+    el.title = c.id;
+    el.addEventListener('click', () => openConversation(c.id));
+    list.appendChild(el);
+  }
+}
+
+/** Real history replay: fetches the conversation's stored messages and
+ * renders them, rather than starting the view fresh (this used to just
+ * show a "switched conversations" note with no actual history — see
+ * docs/VERIFICATION.md Milestone 18's named gap, closed here). */
+async function openConversation(id) {
+  state.conversationId = id;
+  renderConvList();
+  switchView('chat');
+
+  const log = document.getElementById('chatLog');
+  log.innerHTML = '<div class="empty-note">Loading history…</div>';
+  try {
+    const res = await api('/v1/conversations/' + encodeURIComponent(id) + '/messages');
+    const data = await res.json();
+    const messages = data.messages || [];
+    log.innerHTML = '';
+    if (messages.length === 0) {
+      log.innerHTML = '<div class="empty-chat" id="emptyChat"><div class="logo-big"></div><div>No messages yet in this conversation.</div></div>';
+      return;
+    }
+    for (const m of messages) {
+      if (m.role === 'user' || m.role === 'assistant') {
+        addMessageBubble(m.role, m.content);
+      }
+    }
+  } catch {
+    log.innerHTML = '';
+    addSystemNote('Could not load history for this conversation — is the gateway running?');
+  }
+}
+document.getElementById('newChatBtn').addEventListener('click', () => {
+  state.conversationId = uid('web');
+  document.getElementById('chatLog').innerHTML = '<div class="empty-chat" id="emptyChat"><div class="logo-big"></div><div>Ask AXORA anything to get started.</div></div>';
+  renderConvList();
+  switchView('chat');
+});
+
+function addMessageBubble(role, text) {
+  document.getElementById('emptyChat')?.remove();
+  const log = document.getElementById('chatLog');
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (role === 'user' ? 'user' : '');
+  const bubble = document.createElement('div');
+  bubble.className = 'msg ' + role;
+  bubble.innerHTML = renderMarkdownLite(text);
+  row.appendChild(bubble);
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+  return bubble;
+}
+function addSystemNote(text) {
+  document.getElementById('emptyChat')?.remove();
+  const log = document.getElementById('chatLog');
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg system-note';
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  log.appendChild(row);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('composerInput');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!state.conversationId) state.conversationId = uid('web');
+
+  input.value = '';
+  input.style.height = 'auto';
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+
+  addMessageBubble('user', text);
+  const assistantBubble = addMessageBubble('assistant', '');
+  const mode = document.getElementById('modeSelect').value;
+
+  try {
+    const res = await fetch(GATEWAY + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        conversation_id: state.conversationId,
+        messages: [{ role: 'user', content: text }],
+        mode,
+      }),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      assistantBubble.innerHTML = renderMarkdownLite('[error] ' + (errBody.error || res.status));
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const chunk = JSON.parse(part.slice(6));
+        if (chunk.error) {
+          fullText += '\n[error] ' + chunk.error;
+        } else if (chunk.delta) {
+          fullText += chunk.delta;
+        }
+        assistantBubble.innerHTML = renderMarkdownLite(fullText);
+        document.getElementById('chatLog').scrollTop = document.getElementById('chatLog').scrollHeight;
+      }
+    }
+
+    loadConversations();
+  } catch (err) {
+    assistantBubble.innerHTML = renderMarkdownLite('[error] ' + err.message + ' — is the gateway running at ' + GATEWAY + '?');
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+document.getElementById('composerInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+document.getElementById('composerInput').addEventListener('input', function () {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+});
+
+async function loadMemories() {
+  const el = document.getElementById('memList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  try {
+    const res = await api('/v1/memories');
+    const data = await res.json();
+    const memories = data.memories || [];
+    if (memories.length === 0) { el.innerHTML = '<div class="empty-note">No memories stored yet.</div>'; return; }
+    el.innerHTML = '';
+    for (const m of memories) {
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      row.innerHTML = '<div class="content"><span class="badge ready">' + escapeHtml(m.category) + '</span>' +
+        '<div style="margin-top:6px">' + escapeHtml(m.content) + '</div>' +
+        '<div class="meta">' + (m.conversation_id ? 'scoped to ' + escapeHtml(m.conversation_id) : 'global') +
+        ' · importance ' + m.importance + ' · ' + fmtTime(m.created_at) + '</div></div>';
+      el.appendChild(row);
+    }
+  } catch { el.innerHTML = '<div class="empty-note">Could not load memories — is the gateway running?</div>'; }
+}
+document.getElementById('memAddBtn').addEventListener('click', async () => {
+  const content = document.getElementById('memContent').value.trim();
+  if (!content) return;
+  const category = document.getElementById('memCategory').value;
+  const scope = document.getElementById('memScope').value;
+  const btn = document.getElementById('memAddBtn');
+  btn.disabled = true;
+  try {
+    await api('/v1/memories', {
+      method: 'POST',
+      body: JSON.stringify({
+        category, content, source: 'manual',
+        conversationId: scope === 'current' ? (state.conversationId || null) : null,
+      }),
+    });
+    document.getElementById('memContent').value = '';
+    loadMemories();
+  } finally { btn.disabled = false; }
+});
+
+function fileExtToSourceType(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  return ext === 'htm' ? 'html' : ext;
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function loadDocuments() {
+  const el = document.getElementById('kvList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  try {
+    const res = await api('/v1/knowledge/documents');
+    const data = await res.json();
+    const docs = data.documents || [];
+    if (docs.length === 0) { el.innerHTML = '<div class="empty-note">No documents ingested yet.</div>'; return; }
+    el.innerHTML = '';
+    for (const d of docs) {
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      row.innerHTML = '<div class="content"><strong>' + escapeHtml(d.title) + '</strong>' +
+        '<div class="meta">' + escapeHtml(d.source_type) + ' · ' + (d.conversation_id ? 'scoped' : 'global') +
+        ' · ' + fmtTime(d.created_at) + '</div></div>' +
+        '<span class="badge ' + escapeHtml(d.status) + '">' + escapeHtml(d.status) + '</span>';
+      el.appendChild(row);
+    }
+  } catch { el.innerHTML = '<div class="empty-note">Could not load documents — is the gateway running?</div>'; }
+}
+document.getElementById('kvRefreshBtn').addEventListener('click', loadDocuments);
+document.getElementById('kvUploadBtn').addEventListener('click', async () => {
+  const titleInput = document.getElementById('kvTitle');
+  const fileInput = document.getElementById('kvFile');
+  const statusEl = document.getElementById('kvUploadStatus');
+  const file = fileInput.files[0];
+  if (!file) { statusEl.textContent = 'Choose a file first.'; return; }
+  const scope = document.getElementById('kvScope').value;
+  const btn = document.getElementById('kvUploadBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Uploading…';
+  try {
+    const contentBase64 = await fileToBase64(file);
+    const sourceType = fileExtToSourceType(file.name);
+    const res = await api('/v1/knowledge/documents/upload', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: titleInput.value.trim() || file.name,
+        sourceType, contentBase64,
+        conversationId: scope === 'current' ? (state.conversationId || null) : null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      statusEl.textContent = 'Error: ' + (data.error || res.status) + (data.supported ? ' (supported: ' + data.supported.join(', ') + ')' : '');
+    } else {
+      statusEl.textContent = 'Queued — processing in the background. Refresh the list to see status.';
+      titleInput.value = ''; fileInput.value = '';
+      loadDocuments();
+    }
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+  } finally { btn.disabled = false; }
+});
+
+async function loadTools() {
+  const el = document.getElementById('toolsList');
+  const sel = document.getElementById('toolSelect');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  try {
+    const res = await api('/v1/tools');
+    const data = await res.json();
+    const tools = data.tools || [];
+    el.innerHTML = '';
+    sel.innerHTML = '';
+    for (const t of tools) {
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      row.innerHTML = '<div class="content"><strong>' + escapeHtml(t.name) + '</strong>' +
+        '<div class="meta">' + escapeHtml(t.description) + '</div></div>' +
+        '<span class="badge ' + (t.riskLevel === 'dangerous' || t.riskLevel === 'high' ? 'denied' : 'ready') + '">' + escapeHtml(t.riskLevel) + '</span>';
+      el.appendChild(row);
+      const opt = document.createElement('option');
+      opt.value = t.name; opt.textContent = t.name + ' (' + t.riskLevel + ')';
+      sel.appendChild(opt);
+    }
+    if (tools.length === 0) el.innerHTML = '<div class="empty-note">No tools registered.</div>';
+  } catch { el.innerHTML = '<div class="empty-note">Could not load tools — is the gateway running?</div>'; }
+}
+document.getElementById('toolRunBtn').addEventListener('click', async () => {
+  const tool_name = document.getElementById('toolSelect').value;
+  const input = document.getElementById('toolInput').value;
+  const statusEl = document.getElementById('toolRunStatus');
+  if (!tool_name) return;
+  const btn = document.getElementById('toolRunBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Running…';
+  try {
+    const res = await api('/v1/tools/execute', { method: 'POST', body: JSON.stringify({ tool_name, input }) });
+    const data = await res.json();
+    statusEl.textContent = JSON.stringify(data.outcome);
+    loadActions();
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+  } finally { btn.disabled = false; }
+});
+
+async function loadActions() {
+  const el = document.getElementById('actionsList');
+  el.innerHTML = '<div class="empty-note">Loading…</div>';
+  try {
+    const res = await api('/v1/action-log');
+    const data = await res.json();
+    const actions = data.actions || [];
+    if (actions.length === 0) { el.innerHTML = '<div class="empty-note">No actions logged yet.</div>'; return; }
+    el.innerHTML = '';
+    for (const a of actions) {
+      const row = document.createElement('div');
+      row.className = 'list-item';
+      const needsDecision = a.resultStatus === 'awaiting_approval';
+      row.innerHTML = '<div class="content"><strong>' + escapeHtml(a.action) + '</strong>' +
+        '<div class="meta">risk: ' + escapeHtml(a.riskLevel) + ' · ' + fmtTime(a.created_at) + '</div></div>' +
+        '<div class="action-buttons" style="display:flex;align-items:center;gap:6px">' +
+        '<span class="badge ' + escapeHtml(a.resultStatus) + '">' + escapeHtml(a.resultStatus) + '</span></div>';
+      if (needsDecision) {
+        const actionsDiv = row.querySelector('.action-buttons');
+        const approveBtn = document.createElement('button');
+        approveBtn.className = 'btn-secondary btn-ok';
+        approveBtn.textContent = 'Approve';
+        approveBtn.addEventListener('click', () => decideAction(a.id, true));
+        const rejectBtn = document.createElement('button');
+        rejectBtn.className = 'btn-secondary btn-danger';
+        rejectBtn.textContent = 'Reject';
+        rejectBtn.addEventListener('click', () => decideAction(a.id, false));
+        actionsDiv.appendChild(approveBtn);
+        actionsDiv.appendChild(rejectBtn);
+      }
+      el.appendChild(row);
+    }
+  } catch { el.innerHTML = '<div class="empty-note">Could not load action log — is the gateway running?</div>'; }
+}
+async function decideAction(id, approved) {
+  await api('/v1/action-log/' + id + '/decision', { method: 'POST', body: JSON.stringify({ approved }) });
+  loadActions();
+}
+document.getElementById('actionsRefreshBtn').addEventListener('click', loadActions);
+
+checkHealth();
+setInterval(checkHealth, 15000);
+loadConversations();
+</script>
+</body>
+</html>

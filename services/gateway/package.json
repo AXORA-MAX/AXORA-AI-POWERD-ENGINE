@@ -1,0 +1,24 @@
+{
+  "name": "@axora/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AXORA API Gateway — Phase 1/2 foundation. Zero runtime deps by design so it runs in any Node 22+ environment without an install step; a PostgresStore + real provider adapters are the next additive layer.",
+  "type": "module",
+  "engines": { "node": ">=22.5.0" },
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node --experimental-sqlite dist/server.js",
+    "dev": "node --experimental-sqlite --experimental-strip-types src/server.ts"
+  },
+  "dependencies": {
+    "pg": "^8.11.0",
+    "pdfjs-dist": "^5.6.205",
+    "sharp": "^0.34.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0",
+    "pdf-lib": "^1.17.1"
+  },
+  "axoraNotes": "pg is only required at runtime when DATABASE_URL is set (PostgresStore); pdfjs-dist is only required when ingesting PDFs (pdfParser.ts, dynamically imported); sharp is only required when ingesting images (ocrParser.ts, dynamically imported) — ocrParser.ts ALSO requires the 'tesseract' system binary (e.g. apt-get install tesseract-ocr) to be on PATH, which is not an npm dependency and npm install cannot provide it. pdf-lib is dev-only, used solely to generate a real PDF fixture in pdfParser.test.ts. None of these are needed for the mock-provider/SQLite dev path. This field is not read by npm, just documentation."
+}
